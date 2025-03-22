@@ -1,0 +1,339 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>UMAIR.AI</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            margin: 0;
+            padding: 0;
+            background-color: #f4f4f9;
+            height: 100vh;
+            display: flex;
+            flex-direction: column;
+            justify-content: space-between;
+        }
+        #chat {
+            max-width: 500px;
+            margin: 0 auto;
+            padding: 20px;
+            background-color: #fff;
+            border-radius: 10px;
+            box-shadow: 0 0 10px rgba(0, 0, 0, 0.1);
+            flex-grow: 1;
+            overflow-y: auto;
+        }
+        h1 {
+            color: #333;
+            text-align: center;
+        }
+        #input-container {
+            padding: 10px;
+            background-color: #fff;
+            border-top: 1px solid #ccc;
+            position: sticky;
+            bottom: 0;
+            display: flex;
+            gap: 10px;
+        }
+        #userInput {
+            width: 80%;
+            padding: 10px;
+            border: 1px solid #ccc;
+            border-radius: 5px;
+        }
+        button {
+            padding: 10px 20px;
+            background-color: #007bff;
+            color: white;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+        }
+        button:hover {
+            background-color: #0056b3;
+        }
+        #response {
+            margin-top: 20px;
+            font-size: 1.2em;
+            color: #333;
+            text-align: left;
+        }
+        #history {
+            margin-top: 20px;
+            text-align: left;
+            font-size: 0.9em;
+            color: #666;
+        }
+        .message {
+            margin-bottom: 10px;
+            padding: 10px;
+            border-radius: 5px;
+            background-color: #f9f9f9;
+        }
+        .user-message {
+            color: #007bff;
+            text-align: right;
+        }
+        .ai-message {
+            color: #333;
+            text-align: left;
+        }
+        .typing-animation {
+            display: inline-block;
+            overflow: hidden;
+            border-right: 2px solid #333;
+            white-space: nowrap;
+            animation: typing 1s steps(40, end), blink-caret 0.75s step-end infinite;
+        }
+        @keyframes typing {
+            from { width: 0; }
+            to { width: 100%; }
+        }
+        @keyframes blink-caret {
+            from, to { border-color: transparent; }
+            50% { border-color: #333; }
+        }
+    </style>
+</head>
+<body>
+    <div id="chat">
+        <h1>UMAIR.AI</h1>
+        <div id="history">
+            <h3>Chat History:</h3>
+            <ul id="historyList"></ul>
+        </div>
+        <p id="response"></p>
+    </div>
+    <div id="input-container">
+        <input type="text" id="userInput" placeholder="Type something and press Enter...">
+        <button onclick="getResponse()">Send</button>
+        <button onclick="clearHistory()">Clear History</button>
+    </div>
+
+    <script>
+        const historyList = document.getElementById('historyList');
+        const responseElement = document.getElementById('response');
+        const chatContainer = document.getElementById('chat');
+        const userInput = document.getElementById('userInput');
+
+        // Load chat history from local storage
+        let chatHistory = JSON.parse(localStorage.getItem('chatHistory')) || [];
+
+        // Display chat history
+        function displayHistory() {
+            historyList.innerHTML = ''; // Clear previous history
+            chatHistory.forEach(item => {
+                const li = document.createElement('li');
+                li.innerHTML = `
+                    <div class="message user-message">You: ${item.userInput}</div>
+                    <div class="message ai-message">UMAIR.AI: ${item.response}</div>
+                `;
+                historyList.appendChild(li);
+            });
+            // Automatically scroll to the bottom
+            chatContainer.scrollTop = chatContainer.scrollHeight;
+        }
+
+        // Save chat history to local storage
+        function saveToHistory(userInput, response) {
+            chatHistory.push({ userInput, response });
+            localStorage.setItem('chatHistory', JSON.stringify(chatHistory));
+            displayHistory();
+        }
+
+        // Clear chat history
+        function clearHistory() {
+            chatHistory = [];
+            localStorage.removeItem('chatHistory');
+            displayHistory();
+        }
+
+        // Predefined Responses with Contextual Logic (Urdu and English)
+        const responses = [
+            { 
+                keywords: ["hello", "hi", "hey", "سلام", "ہیلو"], 
+                responses: [
+                    "Hello! How can I assist you today?",
+                    "Hi there! What's on your mind?",
+                    "Hey! How can I help you?",
+                    "سلام! میں آپ کی کس طرح مدد کر سکتا ہوں؟",
+                    "ہیلو! آپ کیسے ہیں؟"
+                ]
+            },
+            { 
+                keywords: ["how are you", "آپ کیسے ہو", "کیا حال ہے"], 
+                responses: [
+                    "I'm just a chatbot, but I'm doing great! How about you?",
+                    "I'm fine, thank you! How can I help you today?",
+                    "میں ایک چاٹ بوٹ ہوں، لیکن میں ٹھیک ہوں! آپ کیسے ہیں؟",
+                    "میں ٹھیک ہوں، شکریہ! آج میں آپ کی کس طرح مدد کر سکتا ہوں؟"
+                ]
+            },
+            { 
+                keywords: ["your name", "آپ کا نام کیا ہے", "تمہارا نام کیا ہے"], 
+                responses: [
+                    "My name is UMAIR.AI! Nice to meet you.",
+                    "I'm UMAIR.AI, your personal assistant.",
+                    "میرا نام UMAIR.AI ہے! آپ سے مل کر خوشی ہوئی۔",
+                    "میں UMAIR.AI ہوں، آپ کا ذاتی معاون۔"
+                ]
+            },
+            { 
+                keywords: ["bye", "goodbye", "الوداع", "خدا حافظ"], 
+                responses: [
+                    "Goodbye! Have a great day!",
+                    "Bye! See you soon.",
+                    "الوداع! ایک اچھا دن گزاریں!",
+                    "خدا حافظ! جلد ملتے ہیں۔"
+                ]
+            },
+            { 
+                keywords: ["joke", "مذاق", "چٹکلہ"], 
+                responses: [
+                    "Why don't scientists trust atoms? Because they make up everything!",
+                    "Why did the scarecrow win an award? Because he was outstanding in his field!",
+                    "سائنسدان ایٹم پر کیوں بھروسہ نہیں کرتے؟ کیونکہ وہ سب کچھ بنا دیتے ہیں!",
+                    "بھوت کیوں کامیاب ہوا؟ کیونکہ وہ اپنے کھیت میں نمایاں تھا!"
+                ]
+            },
+            { 
+                keywords: ["weather", "موسم", "آب و ہوا"], 
+                responses: [
+                    "I'm not connected to the internet, so I can't check the weather. But I hope it's nice outside!",
+                    "I wish I could tell you the weather, but I'm just a chatbot. Maybe check your weather app?",
+                    "میں انٹرنیٹ سے منسلک نہیں ہوں، اس لیے موسم کی جانچ نہیں کر سکتا۔ لیکن مجھے امید ہے کہ باہر کا موسم اچھا ہے!",
+                    "کاش میں آپ کو موسم بتا سکتا، لیکن میں صرف ایک چاٹ بوٹ ہوں۔ شاید آپ اپنا موسم ایپ چیک کریں؟"
+                ]
+            },
+            { 
+                keywords: ["thank you", "thanks", "شکریہ", "شکریہ بہت"], 
+                responses: [
+                    "You're welcome! 😊",
+                    "No problem! Happy to help.",
+                    "خوش آمدید! 😊",
+                    "کوئی بات نہیں! مدد کر کے خوشی ہوئی۔"
+                ]
+            },
+            { 
+                keywords: ["what can you do", "آپ کیا کر سکتے ہیں", "تم کیا کر سکتے ہو"], 
+                responses: [
+                    "I can chat with you, tell jokes, and answer simple questions. Try asking me something!",
+                    "I'm here to help you with your queries. Feel free to ask me anything!",
+                    "میں آپ سے بات چیت کر سکتا ہوں، چٹکلے سناؤں، اور سادہ سوالات کے جواب دے سکتا ہوں۔ مجھ سے کچھ پوچھ کر دیکھیں!",
+                    "میں آپ کے سوالات کے جواب دینے کے لیے یہاں ہوں۔ بلا جھجھک مجھ سے کچھ بھی پوچھیں!"
+                ]
+            },
+            { 
+                keywords: ["tell me about yourself", "اپنے بارے میں بتاؤ", "تمہارے بارے میں بتاؤ"], 
+                responses: [
+                    "I'm UMAIR.AI, a smart chatbot designed to help you with your queries. How can I assist you today?",
+                    "I'm a chatbot created to make your life easier. Ask me anything!",
+                    "میں UMAIR.AI ہوں، ایک ہوشیار چاٹ بوٹ جو آپ کے سوالات کے جواب دینے کے لیے بنایا گیا ہے۔ آج میں آپ کی کس طرح مدد کر سکتا ہوں؟",
+                    "میں ایک چاٹ بوٹ ہوں جو آپ کی زندگی کو آسان بنانے کے لیے بنایا گیا ہے۔ مجھ سے کچھ بھی پوچھیں!"
+                ]
+            },
+            { 
+                keywords: ["who created you", "تمہیں کس نے بنایا", "آپ کو کس نے بنایا"], 
+                responses: [
+                    "I was created by a developer who loves building cool things with code!",
+                    "A passionate developer built me to help people like you.",
+                    "مجھے ایک ڈویلپر نے بنایا ہے جو کوڈ کے ساتھ اچھی چیزیں بنانا پسند کرتا ہے!",
+                    "ایک پرجوش ڈویلپر نے مجھے آپ جیسے لوگوں کی مدد کرنے کے لیے بنایا ہے۔"
+                ]
+            },
+            { 
+                keywords: ["help", "مدد", "ہیلپ"], 
+                responses: [
+                    "Sure! You can ask me anything. For example, try asking 'Tell me a joke' or 'What can you do?'",
+                    "I'm here to help! Just type your question, and I'll do my best to answer.",
+                    "یقیناً! آپ مجھ سے کچھ بھی پوچھ سکتے ہیں۔ مثال کے طور پر، 'مجھے ایک چٹکلہ سناؤ' یا 'آپ کیا کر سکتے ہیں؟' پوچھ کر دیکھیں۔",
+                    "میں مدد کرنے کے لیے یہاں ہوں! بس اپنا سوال ٹائپ کریں، اور میں اپنی پوری کوشش کروں گا کہ جواب دوں۔"
+                ]
+            },
+            { 
+                keywords: ["time", "وقت", "اب کیا وقت ہوا ہے"], 
+                responses: [
+                    `The current time is ${new Date().toLocaleTimeString()}.`,
+                    `It's ${new Date().toLocaleTimeString()} right now.`,
+                    `اب کا وقت ${new Date().toLocaleTimeString()} ہے۔`,
+                    `فی الحال وقت ${new Date().toLocaleTimeString()} ہے۔`
+                ]
+            },
+            { 
+                keywords: ["date", "تاریخ", "آج کی تاریخ کیا ہے"], 
+                responses: [
+                    `Today's date is ${new Date().toLocaleDateString()}.`,
+                    `The date today is ${new Date().toLocaleDateString()}.`,
+                    `آج کی تاریخ ${new Date().toLocaleDateString()} ہے۔`,
+                    `آج کی تاریخ ${new Date().toLocaleDateString()} ہے۔`
+                ]
+            }
+        ];
+
+        // Self-learning data
+        let learnedData = JSON.parse(localStorage.getItem('learnedData')) || {};
+
+        // Find the best response
+        function findResponse(userInput) {
+            // Check learned data first
+            if (learnedData[userInput]) {
+                return learnedData[userInput];
+            }
+
+            // Check predefined responses
+            for (const item of responses) {
+                if (item.keywords.some(keyword => userInput.toLowerCase().includes(keyword))) {
+                    return item.responses[Math.floor(Math.random() * item.responses.length)];
+                }
+            }
+
+            // If no response is found, ask the user to teach the bot
+            return "I'm sorry, I didn't understand that. Can you please teach me the correct response?";
+        }
+
+        // Handle user input and display response
+        function getResponse() {
+            const userInput = document.getElementById('userInput').value.trim();
+            if (userInput === "") return;
+
+            let response = findResponse(userInput);
+
+            // If the bot doesn't know the response, ask the user to teach it
+            if (response.includes("teach me")) {
+                const correctResponse = prompt("I don't know how to respond. Please teach me the correct response:");
+                if (correctResponse) {
+                    learnedData[userInput] = correctResponse;
+                    localStorage.setItem('learnedData', JSON.stringify(learnedData));
+                    response = `Thank you! I've learned something new: "${correctResponse}".`;
+                }
+            }
+
+            // Display the response
+            responseElement.innerHTML = `<div class="message user-message">You: ${userInput}</div>
+                                        <div class="message ai-message">UMAIR.AI: ${response}</div>`;
+
+            // Save to history
+            saveToHistory(userInput, response);
+
+            // Clear input field
+            document.getElementById('userInput').value = "";
+
+            // Scroll to the bottom of the chat
+            chatContainer.scrollTop = chatContainer.scrollHeight;
+        }
+
+        // Handle Enter key press
+        userInput.addEventListener('keypress', function (e) {
+            if (e.key === 'Enter') {
+                getResponse();
+            }
+        });
+
+        // Display chat history on page load
+        displayHistory();
+    </script>
+</body>
+</html>
